@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - displayName: string (optional)
+    //   - email: string (required, email format)
+    //   - role: string (required, enum: student, employer, admin)
+    //   - bio: string (optional)
+    //   - companyDescription: string (optional)
+    //   - skills: list (optional)
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: jobs
+    // Document ID: jobId
+    // Fields:
+    //   - employerId: string (required)
+    //   - employerName: string (optional)
+    //   - title: string (required)
+    //   - description: string (required)
+    //   - location: string (required)
+    //   - type: string (required, enum: Full-time, Part-time, Internship, Freelance)
+    //   - salary: string (optional)
+    //   - requirements: list (optional)
+    //   - status: string (required, enum: open, closed)
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: applications
+    // Document ID: applicationId
+    // Fields:
+    //   - jobId: string (required)
+    //   - employerId: string (required)
+    //   - studentId: string (required)
+    //   - studentName: string (optional)
+    //   - resumeUrl: string (optional)
+    //   - coverLetter: string (optional)
+    //   - status: string (required, enum: pending, reviewed, accepted, rejected)
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: reviews
+    // Document ID: reviewId
+    // Fields:
+    //   - employerId: string (required)
+    //   - studentId: string (required)
+    //   - studentName: string (optional)
+    //   - rating: number (required, 1-5)
+    //   - comment: string (required)
+    //   - createdAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "kaipusureshreddy102@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isEmployer() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employer';
+    }
+
+    function isStudent() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['student', 'employer', 'admin'] &&
+             (!('bio' in data) || data.bio == null || data.bio is string && data.bio.size() < 1000) &&
+             (!('companyDescription' in data) || data.companyDescription == null || data.companyDescription is string && data.companyDescription.size() < 5000) &&
+             (!('whatsappNumber' in data) || data.whatsappNumber == null || data.whatsappNumber is string && data.whatsappNumber.size() < 50) &&
+             (!('gender' in data) || data.gender == null || data.gender in ['Male', 'Female', 'Others']);
+    }
+
+    function isValidJob(data) {
+      return data.keys().hasAll(['employerId', 'title', 'description', 'location', 'type', 'status']) &&
+             data.employerId == request.auth.uid &&
+             data.type in ['Full-time', 'Part-time', 'Internship', 'Freelance'] &&
+             data.status in ['open', 'closed'] &&
+             data.title.size() < 200 &&
+             data.description.size() < 5000 &&
+             (!('latitude' in data) || data.latitude == null || data.latitude is number) &&
+             (!('longitude' in data) || data.longitude == null || data.longitude is number) &&
+             (!('salaryMin' in data) || data.salaryMin == null || data.salaryMin is number) &&
+             (!('salaryMax' in data) || data.salaryMax == null || data.salaryMax is number) &&
+             (!('experienceMin' in data) || data.experienceMin == null || data.experienceMin is number) &&
+             (!('experienceMax' in data) || data.experienceMax == null || data.experienceMax is number) &&
+             (!('contactEmail' in data) || data.contactEmail == null || data.contactEmail == "" || (data.contactEmail is string && data.contactEmail.size() < 200)) &&
+             (!('contactPhone' in data) || data.contactPhone == null || data.contactPhone == "" || (data.contactPhone is string && data.contactPhone.size() < 50)) &&
+             (!('whatsappNumber' in data) || data.whatsappNumber == null || data.whatsappNumber == "" || (data.whatsappNumber is string && data.whatsappNumber.size() < 50));
+    }
+
+    function isValidApplication(data) {
+      return data.keys().hasAll(['jobId', 'employerId', 'studentId', 'status', 'studentName', 'address', 'mobileNumber', 'email', 'studyInfo']) &&
+             data.studentId == request.auth.uid &&
+             data.status in ['pending', 'reviewed', 'accepted', 'rejected'] &&
+             data.employerId == get(/databases/$(database)/documents/jobs/$(data.jobId)).data.employerId &&
+             data.studentName is string && data.studentName.size() > 0 &&
+             data.address is string && data.address.size() > 0 &&
+             data.mobileNumber is string && data.mobileNumber.size() >= 10 &&
+             isValidEmail(data.email) &&
+             data.studyInfo is string && data.studyInfo.size() > 0;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['employerId', 'studentId', 'rating', 'comment']) &&
+             data.studentId == request.auth.uid &&
+             data.rating is int && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() > 0 && data.comment.size() < 2000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && 
+                    (request.resource.data.role == resource.data.role || (request.resource.data.role != 'admin' && resource.data.role != 'admin') || isAdmin());
+    }
+
+    match /jobs/{jobId} {
+      allow read: if true; // Jobs are public
+      allow create: if isEmployer() && isValidJob(request.resource.data);
+      allow update: if (isOwner(resource.data.employerId) && isValidJob(request.resource.data)) || isAdmin();
+      allow delete: if isOwner(resource.data.employerId) || isAdmin();
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.studentId) || isOwner(resource.data.employerId) || isAdmin());
+      allow create: if isStudent() && isValidApplication(request.resource.data);
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.studentId) && isValidApplication(request.resource.data) && request.resource.data.status == resource.data.status) ||
+        (isOwner(resource.data.employerId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status'])) ||
+        isAdmin()
+      );
+      allow delete: if isOwner(resource.data.studentId) || isAdmin();
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true; // Reviews are public
+      allow create: if isStudent() && isValidReview(request.resource.data);
+      allow update: if isOwner(resource.data.studentId) && isValidReview(request.resource.data);
+      allow delete: if isOwner(resource.data.studentId) || isAdmin();
+    }
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's full name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "role": { "type": "string", "enum": ["student", "employer", "admin"], "description": "User's role in the system" },
+        "bio": { "type": "string", "description": "Short bio or summary" },
+        "companyDescription": { "type": "string", "description": "Employer's company description" },
+        "skills": { "type": "array", "items": { "type": "string" }, "description": "List of student skills" },
+        "whatsappNumber": { "type": "string", "description": "User's WhatsApp number" },
+        "gender": { "type": "string", "enum": ["Male", "Female", "Others"], "description": "User's gender" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "Job or internship posting",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Job ID" },
+        "employerId": { "type": "string", "description": "UID of the employer who posted the job" },
+        "employerName": { "type": "string", "description": "Name of the employer/company" },
+        "title": { "type": "string", "description": "Job title" },
+        "description": { "type": "string", "description": "Job description" },
+        "location": { "type": "string", "description": "Job location" },
+        "latitude": { "type": "number", "description": "Latitude coordinate" },
+        "longitude": { "type": "number", "description": "Longitude coordinate" },
+        "type": { "type": "string", "enum": ["Full-time", "Part-time", "Internship", "Freelance"], "description": "Job type" },
+        "salary": { "type": "string", "description": "Salary range or amount" },
+        "salaryMin": { "type": "number", "description": "Minimum offered salary" },
+        "salaryMax": { "type": "number", "description": "Maximum offered salary" },
+        "experienceMin": { "type": "number", "description": "Minimum experience required" },
+        "experienceMax": { "type": "number", "description": "Maximum experience required" },
+        "requirements": { "type": "array", "items": { "type": "string" }, "description": "List of job requirements" },
+        "contactEmail": { "type": "string", "format": "email", "description": "Employer's contact email" },
+        "contactPhone": { "type": "string", "description": "Employer's contact phone number" },
+        "whatsappNumber": { "type": "string", "description": "Employer's WhatsApp number for direct chat" },
+        "status": { "type": "string", "enum": ["open", "closed"], "description": "Job status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Posting timestamp" }
+      },
+      "required": ["employerId", "title", "description", "location", "type", "status"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Job application submitted by a student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Application ID" },
+        "jobId": { "type": "string", "description": "ID of the job applied for" },
+        "employerId": { "type": "string", "description": "UID of the employer who posted the job" },
+        "studentId": { "type": "string", "description": "UID of the student who applied" },
+        "studentName": { "type": "string", "description": "Name of the student" },
+        "address": { "type": "string", "description": "Student's address" },
+        "mobileNumber": { "type": "string", "description": "Student's mobile number" },
+        "email": { "type": "string", "format": "email", "description": "Student's email address" },
+        "studyInfo": { "type": "string", "description": "Student's study information" },
+        "resumeUrl": { "type": "string", "description": "Link to the student's resume" },
+        "coverLetter": { "type": "string", "description": "Cover letter text" },
+        "status": { "type": "string", "enum": ["pending", "reviewed", "accepted", "rejected"], "description": "Application status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Submission timestamp" }
+      },
+      "required": ["jobId", "employerId", "studentId", "status", "studentName", "address", "mobileNumber", "email", "studyInfo"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Company review left by a student",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Review ID" },
+        "employerId": { "type": "string", "description": "UID of the employer being reviewed" },
+        "studentId": { "type": "string", "description": "UID of the student who left the review" },
+        "studentName": { "type": "string", "description": "Name of the student" },
+        "rating": { "type": "integer", "minimum": 1, "maximum": 5, "description": "Star rating (1-5)" },
+        "comment": { "type": "string", "description": "Written review text" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Review timestamp" }
+      },
+      "required": ["employerId", "studentId", "rating", "comment"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job posting documents"
+    },
+    "/applications/{applicationId}": {
+      "schema": "Application",
+      "description": "Job application documents"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Company review documents"
+    }
+  }
+}
