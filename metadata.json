@@ -1,7 +1,0 @@
-{
-  "name": "nearnest",
-  "description": "A platform for college students to find local jobs and internships easily.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
-}
